@@ -212,26 +212,159 @@ function render(){
   var v=STATE.view;
   if(v==='home') return renderHome();
   if(v==='add') return renderAdd();
+  if(v==='manual') return renderManual();
   if(v==='review') return renderReview();
   if(v==='events') return renderEvents();
   if(v==='event') return renderEventDetail(STATE.param);
+  if(v==='month') return renderMonth(STATE.param);
   if(v==='settings') return renderSettings();
 }
 
-/* ---------- HOME ---------- */
+/* ---------- HOME / DASHBOARD ---------- */
 function renderHome(){
   $('topbar').innerHTML=bar(null,null);
-  $('view').innerHTML=
-    '<button class="btn btn-brass" style="font-size:1.05rem;padding:20px" onclick="go(\'add\')"><span class="ico">📸</span> Add receipt</button>'+
-    '<div class="stack" id="tiles">'+
+  $('view').innerHTML='<div class="center"><div class="spinner"></div></div>';
+  call('dashboard',PASS).then(function(d){
+    var html=
+      '<div class="card pad" style="background:var(--ink);color:#fff;border:none">'+
+        '<div class="small" style="opacity:.7">Total tracked</div>'+
+        '<div class="num" style="font-size:2.3rem;font-weight:600;line-height:1.1">'+money(d.grandTotal)+'</div>'+
+        '<div class="row" style="border:none;padding:12px 0 0;color:#fff"><span style="opacity:.8">This month</span><span class="num" style="font-weight:600">'+money(d.thisMonth)+'</span></div>'+
+      '</div>'+
+      '<button class="btn btn-brass" style="font-size:1.05rem;padding:20px" onclick="go(\'add\')"><span class="ico">📸</span> Add receipt</button>'+
+      '<button class="btn btn-ghost" onclick="go(\'manual\')">＋ Add expense manually</button>'+
+      '<div class="card pad"><div class="field" style="margin-bottom:8px">Who paid</div>'+
+        '<div class="row"><span>Leah</span><span class="money">'+money(d.byPerson['Leah']||0)+'</span></div>'+
+        '<div class="row" style="border:none"><span>Moshe</span><span class="money">'+money(d.byPerson['Moshe']||0)+'</span></div>'+
+      '</div>';
+    if(d.byMonth.length){
+      html+='<div class="card pad"><div class="field" style="margin-bottom:6px">By month</div>'+
+        d.byMonth.map(function(m){
+          return '<button class="row" style="width:100%;background:none;border:none;border-bottom:1px solid var(--line);text-align:left;cursor:pointer" onclick="go(\'month\',\''+m.month+'\')">'+
+            '<span>'+esc(m.label)+'<br><span class="muted small">'+m.count+' receipt'+(m.count===1?'':'s')+'</span></span>'+
+            '<span class="money">'+money(m.total)+' <span class="muted">›</span></span></button>';
+        }).join('')+'</div>';
+    }
+    html+='<div class="stack">'+
       tile('🧾','Needs review','Drafts waiting to approve','review','reviewBadge')+
       tile('📁','Events','Spending by event','events')+
-      tile('⚖️','Balances','Who owes whom','events')+
-      tile('⚙️','Settings','Config & info','settings')+
+      tile('⚙️','Settings','Config & info','settings')+'</div>';
+    $('view').innerHTML=html;
+    var b=$('reviewBadge'); if(b){ if(d.needsReview){ b.textContent=d.needsReview; b.style.display='inline-block'; } else b.style.display='none'; }
+  }).catch(showErr);
+}
+
+/* ---------- MONTH DETAIL ---------- */
+function renderMonth(month){
+  $('topbar').innerHTML=bar('Month','home');
+  $('view').innerHTML='<div class="center"><div class="spinner"></div></div>';
+  call('receiptsByMonth',PASS,month).then(function(d){
+    $('topbar').innerHTML='<button class="back" onclick="go(\'home\')">‹</button>'+
+      '<h1 style="flex:1">'+esc(d.label)+'</h1>'+
+      '<span class="num" style="font-weight:600;font-size:1.1rem">'+money(d.total)+'</span>';
+    var html='';
+    if(!d.groups.length){ html='<div class="card pad center muted">No approved receipts this month.</div>'; }
+    d.groups.forEach(function(g){
+      html+='<div class="card pad">'+
+        (g.eventId
+          ? '<button class="row" style="width:100%;background:none;border:none;text-align:left;cursor:pointer;padding-top:0" onclick="go(\'event\',\''+g.eventId+'\')"><b>'+esc(g.eventName||'(no event)')+'</b><span class="money">'+money(g.total)+' <span class="muted">›</span></span></button>'
+          : '<div class="row" style="padding-top:0"><b>'+esc(g.eventName||'(no event)')+'</b><span class="money">'+money(g.total)+'</span></div>')+
+        g.receipts.map(function(r){
+          return '<a class="row" href="'+esc(r.driveUrl||'#')+'" target="_blank" style="text-decoration:none;color:inherit">'+
+            '<span>'+esc(r.merchant||'(no merchant)')+'<br><span class="muted small">'+esc(r.date)+' · '+esc(r.paidBy)+'</span></span>'+
+            '<span class="money">'+money(r.total)+'</span></a>';
+        }).join('')+'</div>';
+    });
+    $('view').innerHTML=html;
+  }).catch(showErr);
+}
+
+/* ---------- MANUAL EXPENSE ---------- */
+var MFORM={org:'',group:'',event:null,paidBy:'Leah'};
+function renderManual(){
+  MFORM={org:'',group:'',event:null,paidBy:'Leah'};
+  $('topbar').innerHTML=bar('Add expense','home');
+  $('view').innerHTML='<div class="center"><div class="spinner"></div></div>';
+  call('bootstrap',PASS).then(function(d){ DATA=d; drawManual(); }).catch(showErr);
+}
+function drawManual(){
+  var orgs=DATA.organizations, people=DATA.people;
+  $('view').innerHTML=
+    '<div class="card pad stack">'+
+      '<div><label class="field">Organization</label>'+select('mOrg',[''].concat(orgs.map(function(o){return o.name;})),MFORM.org,'mSetOrg(this.value)','Choose…')+'</div>'+
+      '<div id="mGroupWrap"></div><div id="mEventWrap"></div>'+
+    '</div>'+
+    '<div id="mCreateWrap"></div>'+
+    '<div class="card pad stack">'+
+      '<div><label class="field">Paid by</label>'+segmented('mPaidBy',people,MFORM.paidBy)+'</div>'+
+      '<div class="grid2">'+
+        '<div><label class="field">Merchant / what</label><input id="mMerchant" type="text" placeholder="e.g. Costco"></div>'+
+        '<div><label class="field">Amount</label><input id="mTotal" type="number" inputmode="decimal" placeholder="0.00"></div>'+
+      '</div>'+
+      '<div class="grid2">'+
+        '<div><label class="field">Date</label><input id="mDate" type="date" value="'+todayStr()+'"></div>'+
+        '<div><label class="field">Category</label>'+select('mCat',CATS,'other','void 0','')+'</div>'+
+      '</div>'+
+      '<div><label class="field">Note (optional)</label><textarea id="mNote" placeholder="Anything to remember…"></textarea></div>'+
+    '</div>'+
+    '<button class="btn btn-brass" onclick="saveManual()">Save expense</button>';
+  mDrawGroup(); mDrawEvent();
+}
+function mSetOrg(v){ MFORM.org=v; MFORM.group=''; MFORM.event=null; mDrawGroup(); mDrawEvent(); }
+function mDrawGroup(){
+  var w=$('mGroupWrap'); if(!w) return;
+  if(!MFORM.org){ w.innerHTML=''; return; }
+  var groups=uniq(DATA.eventGroups.filter(function(g){return g.orgName===MFORM.org;}).map(function(g){return g.name;}));
+  w.innerHTML='<label class="field">Event group</label>'+select('mGroupSel',[''].concat(groups),MFORM.group,'mSetGroup(this.value)','Choose…');
+}
+function mSetGroup(v){ MFORM.group=v; MFORM.event=null; mDrawEvent(); }
+function mDrawEvent(){
+  var w=$('mEventWrap'); if(!w) return;
+  if(!MFORM.org){ w.innerHTML=''; return; }
+  var evts=DATA.events.filter(function(e){ return e.orgName===MFORM.org && (!MFORM.group || e.groupName===MFORM.group) && e.status!=='archived'; });
+  w.innerHTML='<label class="field">Specific event</label>'+
+    select('mEventSel',[''].concat(evts.map(function(e){return e.name;}),['+ Create new event…']),MFORM.event?MFORM.event.name:'','mSetEvent(this.value)','Choose…');
+}
+function mSetEvent(v){
+  if(v==='+ Create new event…'){ MFORM.event=null; mDrawCreate(); return; }
+  $('mCreateWrap').innerHTML=''; MFORM.event=DATA.events.filter(function(e){return e.name===v;})[0]||null;
+}
+function mDrawCreate(){
+  $('mCreateWrap').innerHTML=
+    '<div class="card pad stack">'+
+      '<div class="small muted">New event under <b>'+esc(MFORM.org||'—')+(MFORM.group?' › '+esc(MFORM.group):'')+'</b></div>'+
+      (MFORM.group?'':'<div><label class="field">Event group</label><input id="mNewGroup" type="text" placeholder="e.g. Shabbat Dinners"></div>')+
+      '<div><label class="field">Event name</label><input id="mNewName" type="text" placeholder="e.g. Moshe House Shabbat Dinner June 2026"></div>'+
+      '<button class="btn btn-ghost" onclick="mCreateEvt()">Create event</button>'+
     '</div>';
-  call('reviewQueue',PASS).then(function(q){
-    var b=$('reviewBadge'); if(b){ if(q.length){ b.textContent=q.length; b.style.display='inline-block'; } else b.style.display='none'; }
-  }).catch(function(){});
+}
+function mCreateEvt(){
+  var name=($('mNewName').value||'').trim();
+  var group=MFORM.group||(($('mNewGroup')&&$('mNewGroup').value)||'').trim();
+  if(!MFORM.org){ toast('Pick an organization'); return; }
+  if(!group){ toast('Event group needed'); return; }
+  if(!name){ toast('Event name needed'); return; }
+  busy(true,'Creating event…');
+  call('createEvent',PASS,{organizationName:MFORM.org,eventGroupName:group,eventName:name})
+  .then(function(ev){
+    DATA.events.push(ev);
+    if(!DATA.eventGroups.some(function(g){return g.name===group&&g.orgName===MFORM.org;})) DATA.eventGroups.push({name:group,orgName:MFORM.org});
+    MFORM.group=group; MFORM.event=ev; busy(false); $('mCreateWrap').innerHTML='';
+    mDrawGroup(); mDrawEvent();
+    $('mGroupSel') && ($('mGroupSel').value=group); $('mEventSel') && ($('mEventSel').value=ev.name);
+    toast('Event created');
+  }).catch(function(e){ busy(false); toast(e.message); });
+}
+function saveManual(){
+  if(!MFORM.event){ toast('Pick or create an event'); return; }
+  var total=$('mTotal').value; if(!total){ toast('Enter an amount'); return; }
+  MFORM.paidBy=getSeg('mPaidBy');
+  busy(true,'Saving expense…');
+  call('addManualExpense',PASS,{ event:MFORM.event, paidBy:MFORM.paidBy,
+    merchant:($('mMerchant').value||'').trim(), date:$('mDate').value, total:total,
+    category:$('mCat').value, note:($('mNote').value||'').trim() })
+  .then(function(){ busy(false); toast('Expense added'); go('home'); })
+  .catch(function(e){ busy(false); toast(e.message); });
 }
 function tile(emo,t,s,view,badgeId){
   return '<button class="tile" onclick="go(\''+view+'\')">'+
@@ -533,6 +666,9 @@ function renderEventDetail(id){
   $('view').innerHTML='<div class="center"><div class="spinner"></div></div>';
   call('getEvent',PASS,id).then(function(d){
     var e=d.event, maxCat=Math.max.apply(null,[1].concat(Object.keys(d.byCategory).map(function(k){return d.byCategory[k];})));
+    $('topbar').innerHTML='<button class="back" onclick="go(\'events\')">‹</button>'+
+      '<h1 style="flex:1;font-size:1rem;line-height:1.15">'+esc(e.name)+'</h1>'+
+      '<span class="num" style="font-weight:600;font-size:1.15rem">'+money(d.total)+'</span>';
     var html=
       '<div class="card pad">'+
         '<div class="muted small">'+esc(e.orgName)+' › '+esc(e.groupName)+'</div>'+
@@ -621,6 +757,7 @@ function scaleImage(file){
 /* ---------- misc ---------- */
 function uniq(a){ var s={},o=[]; a.forEach(function(x){ if(x&&!s[x]){s[x]=1;o.push(x);} }); return o; }
 function nv(n){ return (n===null||n===undefined||n==='')?'':n; }
+function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function numn(v){ var n=parseFloat(v); return isNaN(n)?null:n; }
 function fmtd(d){ if(!d) return ''; try{ var dt=new Date(d); if(isNaN(dt))return String(d); return dt.toISOString().slice(0,10);}catch(e){return String(d);} }
 function showErr(e){ $('view').innerHTML='<div class="err">'+esc(e.message||'Something went wrong.')+'</div>'+
