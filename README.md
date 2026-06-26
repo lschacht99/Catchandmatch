@@ -27,15 +27,19 @@ one Google Apps Script project that runs as your own Google account.
 ## What's in v1
 
 - Passcode login (only people with the shared passcode get in)
+- **Dashboard:** grand total, this-month total, a **daily/weekly spending chart**, who-paid split, and a tap-through **by-month** breakdown
+- Works on **phone and desktop** (responsive layout with a top nav on wider screens)
 - Add receipt: organization → event group → event (with suggestions + "create new event")
 - Photo capture from phone camera
 - Upload to Google Drive with auto-created folders and a clean filename
 - AI extraction (merchant, date, totals, line items, categories, kosher flags)
 - Review screen — edit everything before saving; nothing is final without your approval
+- **Add expenses manually** (no photo) — straight into the same ledger
 - Writes to the **Receipts** and **Items** tabs, updates **PeopleBalances**, logs to **AuditLog**
-- Events list + per-event dashboard (totals, category breakdown, who-owes-whom)
+- Events list + per-event dashboard (total pinned to the top while scrolling, category breakdown, who-owes-whom)
+- **Notion sync** (optional): one summary row per event, kept up to date
 
-**Postponed to v2 (architecture is ready):** Notion sync, price comparison. Tabs already exist for both.
+**Postponed to v2 (architecture is ready):** price comparison. The `PriceChecks` tab already exists.
 
 ---
 
@@ -72,6 +76,8 @@ You don't have to create any tabs or folders by hand — `setup()` does it and r
 | `PASSCODE` | A shared passcode for Leah & Moshe (e.g. a 6-digit number) | ✅ |
 | `OPENAI_API_KEY` | Your OpenAI API key (`sk-…`) | ✅ |
 | `OPENAI_MODEL` | `gpt-4o-mini` (default) or `gpt-4o` for tougher receipts | optional |
+| `NOTION_TOKEN` | Notion integration secret (`ntn_…`) — see Notion section below | optional |
+| `NOTION_DB_ID` | The Notion database ID to sync events into | optional |
 
 `SHEET_ID` and `ROOT_FOLDER_ID` are set for you by `setup()`.
 
@@ -135,15 +141,61 @@ Every receipt also gets a stable ID (`R-000001`) — the Sheet, not the filename
 
 ---
 
-## Going further (v2)
+## Connecting Notion (optional)
 
-- **Notion sync:** one dashboard page per event (display layer only — the Sheet stays the ledger).
+The app can push a one-row-per-event summary into a Notion database — totals, who paid,
+receipt count, status — and keep it updated. Notion is a **display layer**; the Google Sheet
+stays the real ledger.
+
+**1. Create a Notion integration**
+- Go to <https://www.notion.so/my-integrations> → **New integration** → name it "Cohen Expense Flow".
+- Copy the **Internal Integration Secret** (starts with `ntn_…`). That's your `NOTION_TOKEN`.
+
+**2. Create the database (a Notion table) with these exact property names**
+
+| Property | Type |
+|---|---|
+| `Name` | Title |
+| `Organization` | Text |
+| `Event Group` | Text |
+| `Total` | Number |
+| `Leah Paid` | Number |
+| `Moshe Paid` | Number |
+| `Receipts` | Number |
+| `Status` | Select |
+| `Updated` | Date |
+
+Property names must match exactly (the app writes to them by name). `Status` select options are
+created automatically.
+
+**3. Share the database with your integration**
+- Open the database → top-right **•••** → **Connections** → add "Cohen Expense Flow".
+  Without this step Notion returns "could not find database".
+
+**4. Get the database ID**
+- Open the database as a full page. The URL looks like
+  `https://www.notion.so/<workspace>/<DATABASE_ID>?v=…` — the 32-character chunk before `?v=`
+  is `NOTION_DB_ID`.
+
+**5. Add the two Script Properties** (`NOTION_TOKEN`, `NOTION_DB_ID`) and re-deploy.
+
+**6. Use it**
+- An event page → **Sync this event to Notion**, or
+- **Settings → Sync all events to Notion**.
+- Re-syncing updates the same Notion page (it remembers the page id per event), so you won't get duplicates.
+
+> Nothing about Notion is required for the app to work. If the two properties aren't set,
+> Settings shows "not set up" and the sync buttons explain what's missing.
+
+---
+
+## What's next (v2)
+
 - **Price comparison:** queue items over $10, compare *unit* price via SerpApi/Google Shopping,
   and **require human review for kosher-sensitive food** unless kosher equivalence is clear.
   The `PriceChecks` tab is already there.
 - **True installable PWA:** move `index.html` to Cloudflare Pages / GitHub Pages and call the
-  Apps Script backend. Note: cross-origin calls to Apps Script need care (CORS) — the simplest
-  reliable path is keeping the UI served by Apps Script as it is now.
+  Apps Script backend (keep it served by Apps Script for the simplest, CORS-free path).
 
 ---
 
