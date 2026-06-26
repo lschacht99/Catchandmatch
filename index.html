@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Cohen Expense Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF7F2; --surface:#FFFFFF; --ink:#1C2433; --muted:#6E7280;
+    --brass:#B07A20; --brass-soft:#F3E9D4; --teal:#2C6E6B; --line:#EAE3D7;
+    --danger:#B23A48; --good:#2E7D5B; --shadow:0 1px 2px rgba(28,36,51,.06),0 8px 24px rgba(28,36,51,.06);
+    --r:16px; --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif:"Fraunces",Georgia,serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  body{padding-bottom:env(safe-area-inset-bottom)}
+  .num{font-family:var(--serif);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+
+  /* top bar */
+  header{position:sticky;top:0;z-index:20;background:rgba(250,247,242,.92);
+    backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid var(--line);
+    padding:calc(env(safe-area-inset-top) + 12px) 18px 12px;display:flex;align-items:center;gap:12px}
+  header .back{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
+    display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;color:var(--ink)}
+  header h1{font-family:var(--serif);font-weight:600;font-size:1.15rem;margin:0;flex:1}
+  .wordmark{font-family:var(--serif);font-weight:600;font-size:1.15rem;letter-spacing:-.01em}
+  .wordmark b{color:var(--brass);font-weight:600}
+
+  main{flex:1;padding:18px;display:flex;flex-direction:column;gap:14px}
+
+  /* cards + buttons */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+  .pad{padding:16px}
+  .btn{appearance:none;border:none;border-radius:14px;font-family:var(--sans);font-size:1rem;font-weight:600;
+    padding:16px;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+    transition:transform .06s ease, opacity .15s ease}
+  .btn:active{transform:scale(.985)}
+  .btn-primary{background:var(--ink);color:#fff}
+  .btn-brass{background:var(--brass);color:#fff}
+  .btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+  .btn-danger{background:var(--surface);color:var(--danger);border:1px solid #EAD3D6}
+  .btn[disabled]{opacity:.5;pointer-events:none}
+  .btn .ico{font-size:1.2rem}
+
+  .tile{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);cursor:pointer}
+  .tile:active{transform:scale(.99)}
+  .tile .emo{width:46px;height:46px;border-radius:12px;background:var(--brass-soft);display:flex;
+    align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+  .tile .t{font-weight:600}
+  .tile .s{color:var(--muted);font-size:.85rem}
+  .tile .badge{margin-left:auto;background:var(--ink);color:#fff;font-size:.78rem;font-weight:600;
+    border-radius:999px;padding:3px 10px;min-width:26px;text-align:center}
+
+  label.field{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin:0 0 6px 2px;
+    text-transform:uppercase;letter-spacing:.04em}
+  select,input[type=text],input[type=number],input[type=date],input[type=password],textarea{
+    width:100%;font-family:var(--sans);font-size:1rem;color:var(--ink);background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;padding:14px}
+  textarea{resize:vertical;min-height:64px}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--brass);outline-offset:-1px;border-color:transparent}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  /* segmented */
+  .seg{display:flex;background:#F1ECE3;border-radius:12px;padding:4px;gap:4px}
+  .seg button{flex:1;border:none;background:transparent;border-radius:9px;padding:11px;font-weight:600;
+    font-size:.95rem;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+
+  /* destination breadcrumb — the signature element */
+  .dest{border:1px dashed var(--brass);background:var(--brass-soft);border-radius:14px;padding:13px 15px}
+  .dest .lab{font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--brass);margin-bottom:5px}
+  .dest .path{font-family:var(--serif);font-size:.98rem;color:var(--ink);word-break:break-word}
+  .dest .path .sep{color:var(--brass);margin:0 6px;font-weight:600}
+  .dest .path .ph{color:var(--muted);font-style:italic}
+
+  .photo-drop{border:1.5px dashed var(--line);border-radius:14px;background:var(--surface);
+    aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    color:var(--muted);overflow:hidden;position:relative}
+  .photo-drop img{width:100%;height:100%;object-fit:cover}
+  .photo-drop .hint{font-size:.9rem}
+  .photo-drop .cam{font-size:2.2rem}
+
+  .money{font-family:var(--serif);font-variant-numeric:tabular-nums;font-weight:600}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:none}
+  .muted{color:var(--muted)}
+  .small{font-size:.85rem}
+  .warn{background:#FBF0D9;border:1px solid #ECD9A6;color:#7a5a13;border-radius:12px;padding:11px 13px;font-size:.88rem}
+  .err{background:#FBE9EB;border:1px solid #EAC4C9;color:var(--danger);border-radius:12px;padding:11px 13px;font-size:.9rem}
+  .chip{display:inline-block;font-size:.74rem;font-weight:600;padding:3px 9px;border-radius:999px;background:#F1ECE3;color:var(--muted)}
+  .chip.k{background:#E7F0EC;color:var(--good)}
+  .conf-low{color:var(--danger)} .conf-medium{color:var(--brass)} .conf-high{color:var(--good)}
+
+  .item{display:grid;grid-template-columns:1fr auto;gap:8px 10px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .item input[type=text]{padding:10px} .item input[type=number]{padding:10px;width:96px;text-align:right}
+  .item .meta{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .item select{padding:8px 10px;width:auto;font-size:.85rem}
+  .item .del{background:none;border:none;color:var(--danger);font-size:1.1rem;cursor:pointer}
+  .togglekosher{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted)}
+
+  .bar{height:9px;border-radius:6px;background:#F1ECE3;overflow:hidden;margin-top:4px}
+  .bar > i{display:block;height:100%;background:var(--brass)}
+
+  .center{text-align:center} .stack{display:flex;flex-direction:column;gap:12px}
+  .spinner{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--brass);border-radius:50%;
+    animation:spin .8s linear infinite;margin:0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .overlay{position:fixed;inset:0;background:rgba(250,247,242,.85);backdrop-filter:blur(3px);z-index:50;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
+  .overlay.on{display:flex}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);
+    color:#fff;padding:12px 18px;border-radius:12px;font-size:.92rem;opacity:0;transition:.25s;z-index:60;max-width:90%}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* login */
+  .login{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:22px;text-align:center}
+  .login .mark{font-family:var(--serif);font-size:2rem;font-weight:600}
+  .login .mark b{color:var(--brass)}
+  .login p{color:var(--muted);margin:0;max-width:300px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="login">
+  <div>
+    <div class="mark">Cohen <b>Expense</b> Flow</div>
+    <p>Receipt capture for Leah &amp; Moshe. Enter the shared passcode.</p>
+  </div>
+  <div class="card pad stack" style="width:100%;max-width:340px">
+    <input id="pass" type="password" inputmode="numeric" placeholder="Passcode" autocomplete="current-password">
+    <button class="btn btn-primary" onclick="doLogin()">Enter</button>
+    <div id="loginErr" class="err" style="display:none"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app" style="display:none">
+  <header id="topbar"></header>
+  <main id="view"></main>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="spinner"></div>
+  <div id="overlayMsg" class="muted">Working…</div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* ---------- server bridge ---------- */
+function call(fn){
+  var args=[].slice.call(arguments,1);
+  return new Promise(function(res,rej){
+    var r=google.script.run
+      .withSuccessHandler(res)
+      .withFailureHandler(function(e){ rej(new Error((e&&e.message)||'Server error')); });
+    r[fn].apply(r,args);
+  });
+}
+var PASS = sessionStorage.getItem('cef_pass') || '';
+var DATA = null;       // bootstrap data (orgs, groups, events, people)
+var DRAFT = null;      // current receipt being reviewed
+
+/* ---------- ui utils ---------- */
+var $=function(id){return document.getElementById(id);};
+function money(n){ n=Number(n||0); return '$'+n.toFixed(2); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function busy(on,msg){ $('overlayMsg').textContent=msg||'Working…'; $('overlay').classList.toggle('on',!!on); }
+function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},2200); }
+
+/* ---------- auth ---------- */
+function doLogin(){
+  var p=$('pass').value.trim(); if(!p) return;
+  busy(true,'Checking…');
+  call('authenticate',p).then(function(){
+    PASS=p; sessionStorage.setItem('cef_pass',p);
+    busy(false); $('login').style.display='none'; $('app').style.display='flex';
+    go('home');
+  }).catch(function(e){
+    busy(false); var el=$('loginErr'); el.style.display='block';
+    el.textContent = /not allowed/i.test(e.message) ? 'Access not allowed.' : e.message;
+  });
+}
+if(PASS){
+  // try silent resume
+  call('authenticate',PASS).then(function(){
+    $('login').style.display='none'; $('app').style.display='flex'; go('home');
+  }).catch(function(){ sessionStorage.removeItem('cef_pass'); PASS=''; });
+}
+
+/* ---------- router ---------- */
+var STATE={view:'home',param:null};
+function go(view,param){ STATE={view:view,param:param}; render(); window.scrollTo(0,0); }
+function bar(title,back){
+  return '<div class="'+(back?'':'')+'">'+
+    (back?'<button class="back" onclick="go(\''+back+'\')">‹</button>':'')+
+    (title?'<h1>'+esc(title)+'</h1>':'<span class="wordmark">Cohen <b>Expense</b> Flow</span>')+
+    '</div>';
+}
+function render(){
+  var v=STATE.view;
+  if(v==='home') return renderHome();
+  if(v==='add') return renderAdd();
+  if(v==='review') return renderReview();
+  if(v==='events') return renderEvents();
+  if(v==='event') return renderEventDetail(STATE.param);
+  if(v==='settings') return renderSettings();
+}
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  $('topbar').innerHTML=bar(null,null);
+  $('view').innerHTML=
+    '<button class="btn btn-brass" style="font-size:1.05rem;padding:20px" onclick="go(\'add\')"><span class="ico">📸</span> Add receipt</button>'+
+    '<div class="stack" id="tiles">'+
+      tile('🧾','Needs review','Drafts waiting to approve','review','reviewBadge')+
+      tile('📁','Events','Spending by event','events')+
+      tile('⚖️','Balances','Who owes whom','events')+
+      tile('⚙️','Settings','Config & info','settings')+
+    '</div>';
+  call('reviewQueue',PASS).then(function(q){
+    var b=$('reviewBadge'); if(b){ if(q.length){ b.textContent=q.length; b.style.display='inline-block'; } else b.style.display='none'; }
+  }).catch(function(){});
+}
+function tile(emo,t,s,view,badgeId){
+  return '<button class="tile" onclick="go(\''+view+'\')">'+
+    '<span class="emo">'+emo+'</span>'+
+    '<span><span class="t">'+t+'</span><br><span class="s">'+s+'</span></span>'+
+    (badgeId?'<span class="badge" id="'+badgeId+'" style="display:none">0</span>':'')+'</button>';
+}
+
+/* ---------- ADD RECEIPT ---------- */
+var FORM={org:'',group:'',event:null,paidBy:'Leah',photo:null,note:'',creating:false};
+function renderAdd(){
+  FORM={org:'',group:'',event:null,paidBy:'Leah',photo:null,note:'',creating:false};
+  $('topbar').innerHTML=bar('Add receipt','home');
+  $('view').innerHTML='<div class="center"><div class="spinner"></div></div>';
+  call('bootstrap',PASS).then(function(d){ DATA=d; drawAdd(); }).catch(showErr);
+}
+function drawAdd(){
+  var orgs=DATA.organizations, people=DATA.people;
+  $('view').innerHTML=
+    '<div class="card pad stack">'+
+      '<div><label class="field">Organization</label>'+
+        select('orgSel',[''].concat(orgs.map(function(o){return o.name;})),FORM.org,'onOrg(this.value)','Choose…')+'</div>'+
+      '<div id="groupWrap"></div>'+
+      '<div id="eventWrap"></div>'+
+    '</div>'+
+    '<div id="createWrap"></div>'+
+    '<div class="card pad stack">'+
+      '<div><label class="field">Paid by</label>'+segmented('paidBy',people,FORM.paidBy)+'</div>'+
+      '<div><label class="field">Receipt photo</label>'+
+        '<div class="photo-drop" onclick="document.getElementById(\'photoInput\').click()" id="photoDrop">'+
+          '<div class="cam">📷</div><div class="hint">Tap to take a photo</div></div>'+
+        '<input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(this)"></div>'+
+      '<div><label class="field">Note (optional)</label><textarea id="note" placeholder="Anything to remember…"></textarea></div>'+
+    '</div>'+
+    destBox()+
+    '<button class="btn btn-brass" id="submitBtn" onclick="submitReceipt()">Upload &amp; scan receipt</button>';
+  drawGroup(); drawEvent();
+}
+function onOrg(v){ FORM.org=v; FORM.group=''; FORM.event=null; drawGroup(); drawEvent(); drawDest(); }
+function drawGroup(){
+  var wrap=$('groupWrap'); if(!wrap) return;
+  if(!FORM.org){ wrap.innerHTML=''; return; }
+  var groups=DATA.eventGroups.filter(function(g){return g.orgName===FORM.org;}).map(function(g){return g.name;});
+  groups=uniq(groups);
+  wrap.innerHTML='<label class="field">Event group</label>'+
+    select('groupSel',[''].concat(groups),FORM.group,'onGroup(this.value)','Choose…');
+}
+function onGroup(v){ FORM.group=v; FORM.event=null; drawEvent(); drawDest(); }
+function drawEvent(){
+  var wrap=$('eventWrap'); if(!wrap) return;
+  if(!FORM.org){ wrap.innerHTML=''; return; }
+  var evts=DATA.events.filter(function(e){
+    return e.orgName===FORM.org && (!FORM.group || e.groupName===FORM.group) && e.status!=='archived';
+  });
+  var opts=evts.map(function(e){return e.name;});
+  wrap.innerHTML='<label class="field">Specific event</label>'+
+    select('eventSel',[''].concat(opts,['+ Create new event…']),FORM.event?FORM.event.name:'','onEvent(this.value)','Suggest / choose…');
+}
+function onEvent(v){
+  if(v==='+ Create new event…'){ FORM.creating=true; FORM.event=null; drawCreate(); drawDest(); return; }
+  FORM.creating=false; $('createWrap').innerHTML='';
+  FORM.event=DATA.events.filter(function(e){return e.name===v;})[0]||null; drawDest();
+}
+function drawCreate(){
+  $('createWrap').innerHTML=
+    '<div class="card pad stack">'+
+      '<div class="small muted">New event under <b>'+esc(FORM.org||'—')+(FORM.group?' › '+esc(FORM.group):'')+'</b></div>'+
+      (FORM.group?'':'<div><label class="field">Event group</label><input id="newGroup" type="text" placeholder="e.g. Shabbat Dinners"></div>')+
+      '<div><label class="field">Event name</label><input id="newName" type="text" placeholder="e.g. Moshe House Shabbat Dinner June 2026"></div>'+
+      '<div class="grid2">'+
+        '<div><label class="field">Date</label><input id="newDate" type="date"></div>'+
+        '<div><label class="field">Budget</label><input id="newBudget" type="number" inputmode="decimal" placeholder="optional"></div>'+
+      '</div>'+
+      '<button class="btn btn-ghost" onclick="createEvt()">Create event</button>'+
+    '</div>';
+}
+function createEvt(){
+  var name=($('newName').value||'').trim();
+  var group=FORM.group||(($('newGroup')&&$('newGroup').value)||'').trim();
+  if(!FORM.org){ toast('Pick an organization first'); return; }
+  if(!group){ toast('Event group needed'); return; }
+  if(!name){ toast('Event name needed'); return; }
+  busy(true,'Creating event…');
+  call('createEvent',PASS,{organizationName:FORM.org,eventGroupName:group,eventName:name,
+    eventDate:($('newDate').value||''),budget:($('newBudget').value||'')})
+  .then(function(ev){
+    DATA.events.push(ev); if(!DATA.eventGroups.some(function(g){return g.name===group&&g.orgName===FORM.org;}))
+      DATA.eventGroups.push({name:group,orgName:FORM.org});
+    FORM.group=group; FORM.event=ev; FORM.creating=false;
+    busy(false); $('createWrap').innerHTML=''; drawGroup(); drawEvent(); drawDest();
+    $('groupSel') && ($('groupSel').value=group); $('eventSel') && ($('eventSel').value=ev.name);
+    toast('Event created');
+  }).catch(function(e){ busy(false); toast(e.message); });
+}
+function onPhoto(input){
+  var f=input.files[0]; if(!f) return;
+  busy(true,'Preparing image…');
+  scaleImage(f).then(function(r){
+    FORM.photo=r;
+    $('photoDrop').innerHTML='<img src="'+r.preview+'" alt="receipt preview">';
+    busy(false);
+  }).catch(function(){ busy(false); toast('Could not read image'); });
+}
+function destBox(){ return '<div class="dest" id="destBox"></div>'; }
+function drawDest(){
+  var b=$('destBox'); if(!b) return;
+  function seg(v){ return v?esc(v):'<span class="ph">…</span>'; }
+  b.innerHTML='<div class="lab">Saves to Drive</div><div class="path">Receipts'+
+    '<span class="sep">›</span>'+seg(FORM.org)+
+    '<span class="sep">›</span>'+seg(FORM.group)+
+    '<span class="sep">›</span>'+seg(FORM.event?FORM.event.name:'')+'</div>';
+}
+function submitReceipt(){
+  if(!FORM.org){ toast('Pick an organization'); return; }
+  if(!FORM.event){ toast('Pick or create an event'); return; }
+  if(!FORM.photo){ toast('Add a receipt photo'); return; }
+  FORM.paidBy=getSeg('paidBy'); FORM.note=($('note').value||'').trim();
+  busy(true,'Uploading & reading receipt…');
+  call('uploadReceipt',PASS,{
+    imageBase64:FORM.photo.base64, mimeType:FORM.photo.mimeType,
+    event:FORM.event, paidBy:FORM.paidBy, note:FORM.note
+  }).then(function(res){
+    busy(false); DRAFT=buildDraftFromUpload(res); go('review');
+  }).catch(function(e){ busy(false); showErr(e); });
+}
+function buildDraftFromUpload(res){
+  var x=res.extraction;
+  return {
+    receiptId:res.receiptId, driveUrl:res.driveUrl, status:res.status, paidBy:res.paidBy,
+    event:res.event, date:x.date||res.date, merchant:x.merchant_name||'',
+    subtotal:x.subtotal, tax:x.tax, tip:x.tip, total:x.total,
+    warnings:x.warnings||[], confidence:x.overall_confidence||'low',
+    items:(x.items||[]).map(function(it){return {
+      name:it.name||'', normalized_name:it.normalized_name||it.name||'',
+      quantity:it.quantity, unit:it.unit||'', total_price:it.total_price, unit_price:it.unit_price,
+      category:it.category||'other', needed_for:it.needed_for||'',
+      kosher_sensitive:!!it.kosher_sensitive, reimbursable:it.reimbursable!==false, confidence:it.confidence||'medium'
+    };})
+  };
+}
+
+/* ---------- REVIEW ---------- */
+var CATS=['food','supplies','marketing','travel','housing','utilities','decor','printing','other'];
+function renderReview(){
+  if(!DRAFT){ go('home'); return; }
+  var d=DRAFT;
+  $('topbar').innerHTML=bar('Review receipt','home');
+  var warnHtml=(d.warnings&&d.warnings.length)?'<div class="warn">⚠︎ '+d.warnings.map(esc).join('<br>')+'</div>':'';
+  $('view').innerHTML=
+    warnHtml+
+    '<div class="card pad stack">'+
+      '<div class="row" style="border:none;padding-top:0"><span class="muted small">'+esc(d.receiptId)+
+        ' · paid by '+esc(d.paidBy)+'</span>'+
+        '<a href="'+esc(d.driveUrl)+'" target="_blank" class="chip">Open image ↗</a></div>'+
+      '<div class="small">AI confidence: <b class="conf-'+d.confidence+'">'+d.confidence+'</b></div>'+
+      '<div><label class="field">Merchant</label><input id="rMerchant" type="text" value="'+esc(d.merchant)+'"></div>'+
+      '<div class="grid2">'+
+        '<div><label class="field">Date</label><input id="rDate" type="date" value="'+esc(d.date)+'"></div>'+
+        '<div><label class="field">Total</label><input id="rTotal" type="number" inputmode="decimal" value="'+nv(d.total)+'" oninput="checkTotals()"></div>'+
+      '</div>'+
+      '<div class="grid2">'+
+        '<div><label class="field">Subtotal</label><input id="rSub" type="number" inputmode="decimal" value="'+nv(d.subtotal)+'"></div>'+
+        '<div><label class="field">Tax</label><input id="rTax" type="number" inputmode="decimal" value="'+nv(d.tax)+'"></div>'+
+      '</div>'+
+      '<div><label class="field">Tip</label><input id="rTip" type="number" inputmode="decimal" value="'+nv(d.tip)+'"></div>'+
+    '</div>'+
+    '<div class="card pad">'+
+      '<div class="row" style="padding-top:0"><b>Items</b><span id="itemsSum" class="muted small"></span></div>'+
+      '<div id="itemsList"></div>'+
+      '<div id="mismatch"></div>'+
+      '<button class="btn btn-ghost" style="margin-top:12px" onclick="addItem()">+ Add item</button>'+
+    '</div>'+
+    '<div class="card pad"><label class="field">Event</label>'+
+      '<div class="dest"><div class="path">'+esc(d.event.orgName)+'<span class="sep">›</span>'+esc(d.event.groupName)+'<span class="sep">›</span>'+esc(d.event.name)+'</div></div></div>'+
+    '<div class="stack">'+
+      '<button class="btn btn-brass" onclick="approve(true)">Approve &amp; save</button>'+
+      '<div class="grid2">'+
+        '<button class="btn btn-ghost" onclick="approve(false)">Save draft</button>'+
+        '<button class="btn btn-ghost" onclick="rerun()">Re-run AI</button>'+
+      '</div>'+
+      '<button class="btn btn-danger" onclick="del()">Delete receipt</button>'+
+    '</div>';
+  drawItems(); checkTotals();
+}
+function drawItems(){
+  var list=$('itemsList'); list.innerHTML='';
+  DRAFT.items.forEach(function(it,i){
+    var div=document.createElement('div'); div.className='item';
+    div.innerHTML=
+      '<input type="text" value="'+esc(it.name)+'" oninput="DRAFT.items['+i+'].name=this.value" placeholder="Item">'+
+      '<input type="number" inputmode="decimal" value="'+nv(it.total_price)+'" oninput="DRAFT.items['+i+'].total_price=parseFloat(this.value)||null;checkTotals()">'+
+      '<div class="meta">'+
+        catSelect(i,it.category)+
+        '<label class="togglekosher"><input type="checkbox" '+(it.kosher_sensitive?'checked':'')+' onchange="DRAFT.items['+i+'].kosher_sensitive=this.checked"> kosher-sensitive</label>'+
+        '<button class="del" onclick="DRAFT.items.splice('+i+',1);drawItems();checkTotals()" title="Remove">✕</button>'+
+      '</div>';
+    list.appendChild(div);
+  });
+}
+function catSelect(i,val){
+  return '<select onchange="DRAFT.items['+i+'].category=this.value">'+
+    CATS.map(function(c){return '<option '+(c===val?'selected':'')+'>'+c+'</option>';}).join('')+'</select>';
+}
+function addItem(){ DRAFT.items.push({name:'',total_price:null,category:'other',kosher_sensitive:false,reimbursable:true,confidence:'medium'}); drawItems(); checkTotals(); }
+function checkTotals(){
+  var sum=DRAFT.items.reduce(function(a,it){return a+(parseFloat(it.total_price)||0);},0);
+  $('itemsSum') && ($('itemsSum').textContent=money(sum));
+  var total=parseFloat($('rTotal')?$('rTotal').value:DRAFT.total)||0;
+  var m=$('mismatch'); if(!m) return;
+  if(total>0 && Math.abs(sum-total)>0.05 && DRAFT.items.length)
+    m.innerHTML='<div class="warn" style="margin-top:10px">Items add to '+money(sum)+' but total is '+money(total)+'. That can be fine (tax/tip/fees) — just check.</div>';
+  else m.innerHTML='';
+}
+function collectReview(approveFlag){
+  return {
+    receiptId:DRAFT.receiptId, approve:approveFlag,
+    merchant:$('rMerchant').value.trim(), date:$('rDate').value,
+    total:$('rTotal').value, subtotal:$('rSub').value, tax:$('rTax').value, tip:$('rTip').value,
+    paidBy:DRAFT.paidBy, event:DRAFT.event, items:DRAFT.items, notes:''
+  };
+}
+function approve(flag){
+  busy(true,flag?'Saving & approving…':'Saving draft…');
+  call('saveReceipt',PASS,collectReview(flag)).then(function(){
+    busy(false); toast(flag?'Approved & saved':'Draft saved'); DRAFT=null; go('home');
+  }).catch(function(e){ busy(false); toast(e.message); });
+}
+function rerun(){
+  busy(true,'Re-reading receipt…');
+  call('rerunAI',PASS,DRAFT.receiptId).then(function(r){
+    var x=r.extraction;
+    DRAFT.merchant=x.merchant_name||DRAFT.merchant; DRAFT.date=x.date||DRAFT.date;
+    DRAFT.subtotal=x.subtotal; DRAFT.tax=x.tax; DRAFT.tip=x.tip; DRAFT.total=x.total;
+    DRAFT.confidence=x.overall_confidence||'low'; DRAFT.warnings=x.warnings||[];
+    DRAFT.items=(x.items||[]).map(function(it){return {name:it.name||'',normalized_name:it.normalized_name||it.name||'',
+      quantity:it.quantity,unit:it.unit||'',total_price:it.total_price,unit_price:it.unit_price,
+      category:it.category||'other',needed_for:it.needed_for||'',kosher_sensitive:!!it.kosher_sensitive,
+      reimbursable:it.reimbursable!==false,confidence:it.confidence||'medium'};});
+    busy(false); renderReview(); toast('AI re-ran');
+  }).catch(function(e){ busy(false); toast(e.message); });
+}
+function del(){
+  if(!confirm('Delete this receipt? It will be marked rejected.')) return;
+  busy(true,'Deleting…');
+  call('deleteReceipt',PASS,DRAFT.receiptId).then(function(){ busy(false); DRAFT=null; toast('Deleted'); go('home'); })
+  .catch(function(e){ busy(false); toast(e.message); });
+}
+
+/* review queue list reuses review screen via getReceipt */
+function openReceipt(id){
+  busy(true,'Loading…');
+  call('getReceipt',PASS,id).then(function(r){
+    var rc=r.receipt;
+    DRAFT={ receiptId:rc.receipt_id, driveUrl:rc.drive_url, status:rc.status, paidBy:rc.paid_by,
+      event:{id:rc.event_id,name:rc.event_name,orgId:rc.organization_id,orgName:rc.organization_name,groupId:rc.event_group_id,groupName:rc.event_group_name},
+      date:fmtd(rc.date), merchant:rc.merchant||'', subtotal:numn(rc.subtotal), tax:numn(rc.tax), tip:numn(rc.tip), total:numn(rc.total),
+      warnings:[], confidence:rc.ai_confidence||'low',
+      items:(r.items||[]).map(function(it){return {name:it.item_name,normalized_name:it.normalized_item_name,
+        total_price:numn(it.item_total),unit_price:numn(it.unit_price),quantity:numn(it.quantity),unit:it.unit,
+        category:it.category||'other',kosher_sensitive:String(it.kosher_sensitive)==='true',reimbursable:String(it.reimbursable)!=='false',confidence:it.ai_confidence||'medium'};})
+    };
+    busy(false); go('review');
+  }).catch(function(e){ busy(false); toast(e.message); });
+}
+
+/* ---------- EVENTS ---------- */
+function renderEvents(){
+  $('topbar').innerHTML=bar('Events','home');
+  $('view').innerHTML='<div class="center"><div class="spinner"></div></div>';
+  Promise.all([call('listEvents',PASS),call('reviewQueue',PASS)]).then(function(r){
+    var events=r[0], queue=r[1];
+    var html='';
+    if(queue.length){
+      html+='<div class="card pad"><div class="row" style="padding-top:0"><b>Needs review</b><span class="badge" style="background:var(--danger)">'+queue.length+'</span></div>'+
+        queue.map(function(q){return '<button class="row" style="width:100%;background:none;border:none;border-bottom:1px solid var(--line);text-align:left;cursor:pointer" onclick="openReceipt(\''+q.receiptId+'\')">'+
+          '<span><b>'+esc(q.merchant||'(no merchant)')+'</b><br><span class="muted small">'+esc(q.eventName||'—')+' · '+esc(q.status)+'</span></span>'+
+          '<span class="money">'+money(q.total)+'</span></button>';}).join('')+'</div>';
+    }
+    if(!events.length){ html+='<div class="card pad center muted">No events yet. Add a receipt to create one.</div>'; }
+    else{
+      var byOrg={}; events.forEach(function(e){ (byOrg[e.orgName]=byOrg[e.orgName]||[]).push(e); });
+      Object.keys(byOrg).forEach(function(org){
+        html+='<div class="field" style="margin:6px 0 -2px 2px">'+esc(org)+'</div>';
+        byOrg[org].forEach(function(e){
+          html+='<button class="tile" onclick="go(\'event\',\''+e.id+'\')">'+
+            '<span><span class="t">'+esc(e.name)+'</span><br>'+
+            '<span class="s">'+e.receiptCount+' receipts · L '+money(e.paidByLeah)+' · M '+money(e.paidByMoshe)+'</span></span>'+
+            '<span class="money" style="margin-left:auto">'+money(e.total)+'</span></button>';
+        });
+      });
+    }
+    $('view').innerHTML=html;
+  }).catch(showErr);
+}
+
+/* ---------- EVENT DETAIL ---------- */
+function renderEventDetail(id){
+  $('topbar').innerHTML=bar('Event','events');
+  $('view').innerHTML='<div class="center"><div class="spinner"></div></div>';
+  call('getEvent',PASS,id).then(function(d){
+    var e=d.event, maxCat=Math.max.apply(null,[1].concat(Object.keys(d.byCategory).map(function(k){return d.byCategory[k];})));
+    var html=
+      '<div class="card pad">'+
+        '<div class="muted small">'+esc(e.orgName)+' › '+esc(e.groupName)+'</div>'+
+        '<h2 style="font-family:var(--serif);font-weight:600;margin:4px 0 10px">'+esc(e.name)+'</h2>'+
+        '<div class="row" style="padding-top:0"><span class="muted">Total spent</span><span class="money" style="font-size:1.4rem">'+money(d.total)+'</span></div>'+
+        (e.budget?'<div class="row"><span class="muted">Budget</span><span class="money">'+money(e.budget)+'</span></div>':'')+
+        '<div class="row"><span class="muted">Paid by Leah</span><span class="money">'+money(d.byPerson['Leah']||0)+'</span></div>'+
+        '<div class="row"><span class="muted">Paid by Moshe</span><span class="money">'+money(d.byPerson['Moshe']||0)+'</span></div>'+
+      '</div>';
+    if(d.balances.length){
+      html+='<div class="card pad"><div class="field" style="margin-bottom:8px">Reimbursement</div>'+
+        d.balances.map(function(b){
+          var sign=b.due>0?'is owed':'owes'; var amt=Math.abs(b.due);
+          return '<div class="row"><span>'+esc(b.person)+'</span><span class="'+(b.due>=0?'':'')+'">'+
+            '<span class="muted small">paid '+money(b.paid)+' · </span><b class="money">'+sign+' '+money(amt)+'</b></span></div>';
+        }).join('')+'</div>';
+    }
+    if(Object.keys(d.byCategory).length){
+      html+='<div class="card pad"><div class="field" style="margin-bottom:8px">By category</div>'+
+        Object.keys(d.byCategory).sort(function(a,b){return d.byCategory[b]-d.byCategory[a];}).map(function(c){
+          return '<div style="margin-bottom:10px"><div class="row" style="padding:2px 0;border:none"><span class="small">'+esc(c)+'</span><span class="money small">'+money(d.byCategory[c])+'</span></div>'+
+            '<div class="bar"><i style="width:'+(d.byCategory[c]/maxCat*100)+'%"></i></div></div>';
+        }).join('')+'</div>';
+    }
+    html+='<div class="card pad"><div class="field" style="margin-bottom:6px">Receipts ('+d.receipts.length+')</div>'+
+      (d.receipts.length?d.receipts.map(function(r){
+        return '<a class="row" href="'+esc(r.driveUrl)+'" target="_blank" style="text-decoration:none;color:inherit">'+
+          '<span><b>'+esc(r.merchant||'(no merchant)')+'</b><br><span class="muted small">'+esc(r.date)+' · '+esc(r.paidBy)+'</span></span>'+
+          '<span class="money">'+money(r.total)+'</span></a>';
+      }).join(''):'<div class="muted small">No approved receipts yet.</div>')+'</div>';
+    $('view').innerHTML=html;
+  }).catch(showErr);
+}
+
+/* ---------- SETTINGS ---------- */
+function renderSettings(){
+  $('topbar').innerHTML=bar('Settings','home');
+  $('view').innerHTML=
+    '<div class="card pad stack">'+
+      '<div class="small muted">Cohen Expense Flow — private build for Leah &amp; Moshe.</div>'+
+      '<div class="row"><span>Notion sync</span><span class="chip">v2 — later</span></div>'+
+      '<div class="row"><span>Price comparison</span><span class="chip">v2 — later</span></div>'+
+      '<div class="row" style="border:none"><span>Organizations / events</span><span class="muted small">Auto-created as you go</span></div>'+
+    '</div>'+
+    '<button class="btn btn-ghost" onclick="logout()">Sign out</button>'+
+    '<div class="center muted small">Add to Home Screen for an app-like icon.</div>';
+}
+function logout(){ sessionStorage.removeItem('cef_pass'); location.reload(); }
+
+/* ---------- shared widgets ---------- */
+function select(id,opts,val,onchange,ph){
+  return '<select id="'+id+'" onchange="'+onchange+'">'+
+    opts.map(function(o){
+      if(o==='') return '<option value="" '+(val?'':'selected')+' disabled hidden>'+esc(ph||'Choose…')+'</option>';
+      return '<option '+(o===val?'selected':'')+'>'+esc(o)+'</option>';
+    }).join('')+'</select>';
+}
+function segmented(name,opts,val){
+  return '<div class="seg" data-seg="'+name+'">'+opts.map(function(o){
+    return '<button type="button" class="'+(o===val?'on':'')+'" onclick="pickSeg(\''+name+'\',this)">'+esc(o)+'</button>';
+  }).join('')+'</div>';
+}
+function pickSeg(name,el){ var p=el.parentNode; [].forEach.call(p.children,function(c){c.classList.remove('on');}); el.classList.add('on'); }
+function getSeg(name){ var p=document.querySelector('[data-seg="'+name+'"] .on'); return p?p.textContent:''; }
+
+/* ---------- image scaling ---------- */
+function scaleImage(file){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var img=new Image();
+      img.onload=function(){
+        var max=1600, scale=Math.min(1,max/Math.max(img.width,img.height));
+        var w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+        var c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        var url=c.toDataURL('image/jpeg',0.82);
+        resolve({base64:url.split(',')[1],mimeType:'image/jpeg',preview:url});
+      };
+      img.onerror=reject; img.src=e.target.result;
+    };
+    reader.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- misc ---------- */
+function uniq(a){ var s={},o=[]; a.forEach(function(x){ if(x&&!s[x]){s[x]=1;o.push(x);} }); return o; }
+function nv(n){ return (n===null||n===undefined||n==='')?'':n; }
+function numn(v){ var n=parseFloat(v); return isNaN(n)?null:n; }
+function fmtd(d){ if(!d) return ''; try{ var dt=new Date(d); if(isNaN(dt))return String(d); return dt.toISOString().slice(0,10);}catch(e){return String(d);} }
+function showErr(e){ $('view').innerHTML='<div class="err">'+esc(e.message||'Something went wrong.')+'</div>'+
+  '<button class="btn btn-ghost" onclick="go(\'home\')">Back to home</button>'; }
+</script>
+</body>
+</html>
